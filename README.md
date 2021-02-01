@@ -1,4 +1,7 @@
-[![CircleCI](https://circleci.com/gh/hairyhenderson/go-codeowners/tree/master.svg?style=svg)](https://circleci.com/gh/hairyhenderson/go-codeowners/tree/master)
+
+> Attribution, the original work is from  
+> github.com/hairyhenderson/go-codeowners 
+> This fork allow to write files and to get non global owners
 
 # go-codeowners
 
@@ -15,13 +18,13 @@ Features:
 ## Usage
 
 ```console
-go get -u github.com/hairyhenderson/go-codeowners
+go get -u github.com/noandrea/go-codeowners
 ```
 
 To find the owner of the README.md file:
 
 ```go
-import "github.com/hairyhenderson/go-codeowners"
+import "github.com/noandrea/go-codeowners"
 
 func main() {
 	c, _ := NewCodeowners(cwd())
@@ -35,7 +38,7 @@ func main() {
 To generate a new codeowners file :
 
 ```go
-import "github.com/hairyhenderson/go-codeowners"
+import "github.com/noandrea/go-codeowners"
 
 func main() {
 	c, _ := EmptyCodeowners(cwd())

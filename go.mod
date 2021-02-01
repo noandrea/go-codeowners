@@ -1,6 +1,6 @@
-module github.com/hairyhenderson/go-codeowners
+module github.com/noandrea/go-codeowners
 
-go 1.13
+go 1.15
 
 require (
 	github.com/spf13/afero v1.2.2

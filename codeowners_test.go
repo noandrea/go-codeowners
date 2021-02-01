@@ -23,6 +23,55 @@ var (
 docs/**	@org/docteam @joe`
 	sample2 = `* @hairyhenderson`
 	sample3 = `baz/* @baz @qux`
+	// based on https://help.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners#codeowners-syntax
+	// with a few unimportant modifications
+	sample4 = `# This is a comment.
+# Each line is a file pattern followed by one or more owners.
+
+# These owners will be the default owners for everything in
+# the repo. Unless a later match takes precedence,
+# @global-owner1 and @global-owner2 will be requested for
+# review when someone opens a pull request.
+*       @global-owner1 @global-owner2
+
+# Order is important; the last matching pattern takes the most
+# precedence. When someone opens a pull request that only
+# modifies JS files, only @js-owner and not the global
+# owner(s) will be requested for a review.
+*.js	@js-owner
+
+# You can also use email addresses if you prefer. They'll be
+# used to look up users just like we do for commit author
+# emails.
+*.go docs@example.com
+
+# In this example, @doctocat owns any files in the build/logs
+# directory at the root of the repository and any of its
+# subdirectories.
+/build/logs/ @doctocat
+
+# The 'docs/*' pattern will match files like
+# 'docs/getting-started.md' but not further nested files like
+# 'docs/build-app/troubleshooting.md'.
+docs/*  docs@example.com
+
+# In this example, @octocat owns any file in an apps directory
+# anywhere in your repository.
+apps/ @octocat
+
+# In this example, @doctocat owns any file in the '/docs'
+# directory in the root of your repository.
+/docs/ @doctocat
+
+  foobar/ @fooowner
+
+\#foo/ @hashowner
+
+docs/*.md @mdowner
+
+# this example tests an escaped space in the path
+space/test\ space/ @spaceowner
+`
 
 	codeowners []Codeowner
 )
@@ -111,56 +160,8 @@ func co(pattern string, owners []string) Codeowner {
 
 func TestFullParseCodeowners(t *testing.T) {
 	t.Parallel()
-	// based on https://help.github.com/en/github/creating-cloning-and-archiving-repositories/about-code-owners#codeowners-syntax
-	// with a few unimportant modifications
-	example := `# This is a comment.
-# Each line is a file pattern followed by one or more owners.
 
-# These owners will be the default owners for everything in
-# the repo. Unless a later match takes precedence,
-# @global-owner1 and @global-owner2 will be requested for
-# review when someone opens a pull request.
-*       @global-owner1 @global-owner2
-
-# Order is important; the last matching pattern takes the most
-# precedence. When someone opens a pull request that only
-# modifies JS files, only @js-owner and not the global
-# owner(s) will be requested for a review.
-*.js	@js-owner
-
-# You can also use email addresses if you prefer. They'll be
-# used to look up users just like we do for commit author
-# emails.
-*.go docs@example.com
-
-# In this example, @doctocat owns any files in the build/logs
-# directory at the root of the repository and any of its
-# subdirectories.
-/build/logs/ @doctocat
-
-# The 'docs/*' pattern will match files like
-# 'docs/getting-started.md' but not further nested files like
-# 'docs/build-app/troubleshooting.md'.
-docs/*  docs@example.com
-
-# In this example, @octocat owns any file in an apps directory
-# anywhere in your repository.
-apps/ @octocat
-
-# In this example, @doctocat owns any file in the '/docs'
-# directory in the root of your repository.
-/docs/ @doctocat
-
-  foobar/ @fooowner
-
-\#foo/ @hashowner
-
-docs/*.md @mdowner
-
-# this example tests an escaped space in the path
-space/test\ space/ @spaceowner
-`
-	c := parseCodeowners(strings.NewReader(example))
+	c := parseCodeowners(strings.NewReader(sample4))
 	codeowners := &Codeowners{
 		repoRoot: "/build",
 		Patterns: c,
@@ -177,48 +178,67 @@ space/test\ space/ @spaceowner
 			[]string{"@hashowner"},
 		},
 		{"foobar/baz.go",
-			[]string{"@fooowner"}, []string{"@fooowner"}},
+			[]string{"@fooowner"},
+			[]string{"@fooowner"}},
 		{"/docs/README.md",
-			[]string{"@mdowner"}, []string{"@mdowner"}},
+			[]string{"@mdowner"},
+			[]string{"@mdowner"}},
 		// XXX: uncertain about this one
 		{"blah/docs/README.md",
-			[]string{"docs@example.com"}, []string{"docs@example.com"}},
+			[]string{"docs@example.com"},
+			[]string{"docs@example.com"}},
 		{"foo.txt",
-			[]string{"@global-owner1", "@global-owner2"}, nil},
+			[]string{"@global-owner1", "@global-owner2"},
+			nil},
 		{"foo/bar.txt",
-			[]string{"@global-owner1", "@global-owner2"}, nil},
+			[]string{"@global-owner1", "@global-owner2"},
+			nil},
 		{"foo.js",
-			[]string{"@js-owner"}, []string{"@js-owner"}},
+			[]string{"@js-owner"},
+			[]string{"@js-owner"}},
 		{"foo/bar.js",
-			[]string{"@js-owner"}, []string{"@js-owner"}},
+			[]string{"@js-owner"},
+			[]string{"@js-owner"}},
 		{"foo.go",
-			[]string{"docs@example.com"}, []string{"docs@example.com"}},
+			[]string{"docs@example.com"},
+			[]string{"docs@example.com"}},
 		{"foo/bar.go",
-			[]string{"docs@example.com"}, []string{"docs@example.com"}},
+			[]string{"docs@example.com"},
+			[]string{"docs@example.com"}},
 		// relative to root
 		{"build/logs/foo.go",
-			[]string{"@doctocat"}, []string{"@doctocat"}},
+			[]string{"@doctocat"},
+			[]string{"@doctocat"}},
 		{"build/logs/foo/bar.go",
-			[]string{"@doctocat"}, []string{"@doctocat"}},
+			[]string{"@doctocat"},
+			[]string{"@doctocat"}},
 		// not relative to root
 		{"foo/build/logs/foo.go",
-			[]string{"docs@example.com"}, []string{"docs@example.com"}},
+			[]string{"docs@example.com"},
+			[]string{"docs@example.com"}},
 		// docs anywhere
 		{"foo/docs/foo.js",
-			[]string{"docs@example.com"}, []string{"docs@example.com"}},
+			[]string{"docs@example.com"},
+			[]string{"docs@example.com"}},
 		{"foo/bar/docs/foo.js",
-			[]string{"docs@example.com"}, []string{"docs@example.com"}},
+			[]string{"docs@example.com"},
+			[]string{"docs@example.com"}},
 		// but not nested
 		{"foo/bar/docs/foo/foo.js",
-			[]string{"@js-owner"}, []string{"@js-owner"}},
+			[]string{"@js-owner"},
+			[]string{"@js-owner"}},
 		{"foo/apps/foo.js",
-			[]string{"@octocat"}, []string{"@octocat"}},
+			[]string{"@octocat"},
+			[]string{"@octocat"}},
 		{"docs/foo.js",
-			[]string{"@doctocat"}, []string{"@doctocat"}},
+			[]string{"@doctocat"},
+			[]string{"@doctocat"}},
 		{"/docs/foo.js",
-			[]string{"@doctocat"}, []string{"@doctocat"}},
+			[]string{"@doctocat"},
+			[]string{"@doctocat"}},
 		{"/space/test space/doc1.txt",
-			[]string{"@spaceowner"}, []string{"@spaceowner"}},
+			[]string{"@spaceowner"},
+			[]string{"@spaceowner"}},
 	}
 
 	for _, d := range data {
@@ -229,6 +249,37 @@ space/test\ space/ @spaceowner
 			assert.EqualValues(t, d.localOwners, codeowners.LocalOwners(d.path))
 		})
 	}
+}
+
+func TestFullWriteCodeowners(t *testing.T) {
+	t.Parallel()
+
+	codeowners := EmptyCodeowners()
+
+	codeowners.AddPattern("*", []string{"@global-owner1", "@global-owner2"})
+	codeowners.AddPattern("*.js", []string{"@js-owner"})
+	codeowners.AddPattern("*.go", []string{"docs@example.com"})
+	codeowners.AddPattern("/build/logs/", []string{"@doctocat"})
+	codeowners.AddPattern("docs/*", []string{"docs@example.com"})
+	codeowners.AddPattern("apps/", []string{"@octocat"})
+	codeowners.AddPattern("/docs/", []string{"@doctocat"})
+	codeowners.AddPattern("foobar/", []string{"@fooowner"})
+	codeowners.AddPattern("\\#foo/", []string{"@hashowner"})
+	codeowners.AddPattern("docs/*.md", []string{"@mdowner"})
+	codeowners.AddPattern("space/test space/", []string{"@spaceowner"})
+	// write to a temp file
+	tmpDir, err := ioutil.TempDir("", "codeowners")
+	assert.NoError(t, err)
+	cof := path.Join(tmpDir, "CODEOWNERS")
+	err = codeowners.ToFile(cof)
+
+	c := parseCodeowners(strings.NewReader(sample4))
+	codeowners2 := &Codeowners{
+		repoRoot: ".",
+		Patterns: c,
+	}
+	assert.Equal(t, codeowners2.Patterns, codeowners.Patterns)
+
 }
 
 func TestOwners(t *testing.T) {

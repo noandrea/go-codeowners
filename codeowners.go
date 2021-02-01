@@ -31,6 +31,16 @@ func (c Codeowner) IsGlobal() bool {
 	return c.Pattern == "*"
 }
 
+// AddPattern - add a new pattern to the codeowners file
+func (c *Codeowners) AddPattern(pattern string, owners []string) (err error) {
+	p, err := NewCodeowner(pattern, owners)
+	if err != nil {
+		return
+	}
+	c.Patterns = append(c.Patterns, p)
+	return
+}
+
 func (c Codeowner) String() string {
 	return fmt.Sprintf("%s\t%v", c.Pattern, strings.Join(c.Owners, ", "))
 }
@@ -80,6 +90,14 @@ func NewCodeowners(path string) (*Codeowners, error) {
 	return FromFile(path)
 }
 
+// EmptyCodeowners - create an empty codeowners file
+func EmptyCodeowners() *Codeowners {
+	return &Codeowners{
+		repoRoot: ".",
+		Patterns: []Codeowner{},
+	}
+}
+
 // FromFile creates a Codeowners from the path to a local file.
 func FromFile(path string) (*Codeowners, error) {
 	r, root, err := findCodeownersFile(path)
@@ -99,6 +117,27 @@ func FromReader(r io.Reader, repoRoot string) (*Codeowners, error) {
 	}
 	co.Patterns = parseCodeowners(r)
 	return co, nil
+}
+
+// ToFile - serialize the Codeowners to file
+func (c *Codeowners) ToFile(path string) (err error) {
+	f, err := os.Create(path)
+	if err != nil {
+		return
+	}
+	defer f.Close() //TODO not checking if this fails
+	escape := func(pattern string) string {
+		if strings.HasPrefix(pattern, "#") {
+			pattern = fmt.Sprint("\\", pattern)
+		}
+		return strings.ReplaceAll(pattern, " ", "\\ ")
+	}
+	w := bufio.NewWriter(f)
+	for _, c := range c.Patterns {
+		w.WriteString(fmt.Sprintf("%s    %s\n", escape(c.Pattern), strings.Join(c.Owners, " ")))
+	}
+	err = w.Flush()
+	return
 }
 
 // parseCodeowners parses a list of Codeowners from a Reader

@@ -134,7 +134,7 @@ func (c *Codeowners) ToFile(path string) (err error) {
 	}
 	w := bufio.NewWriter(f)
 	for _, c := range c.Patterns {
-		w.WriteString(fmt.Sprintf("%s    %s\n", escape(c.Pattern), strings.Join(c.Owners, " ")))
+		w.WriteString(fmt.Sprintf("%-25s %s\n", escape(c.Pattern), strings.Join(c.Owners, " ")))
 	}
 	err = w.Flush()
 	return
